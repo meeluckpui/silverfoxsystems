@@ -14,7 +14,7 @@ if (!query || !location) {
 }
 
 const client = new ApifyClient({
-    token: process.env.APIFY_TOKEN,
+  token: Actor.getEnv().token,
 });
 
 console.log(`Running Google Maps scrape for: ${query} in ${location}`);
