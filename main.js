@@ -17,16 +17,21 @@ const client = new ApifyClient({
 });
 
 console.log(`Running Google Maps scrape for: ${query} in ${location}`);
-client.actor("apify/google-maps-scraper").call({
+const run = await client.actor("apify/google-maps-scraper").call({
     searchStringsArray: [query],
     locationQuery: location,
     maxCrawledPlacesPerSearch: limit,
     language: "en",
     website: "allPlaces"
 });
-
+const run = await client.actor("apify/google-maps-scraper").call({
+    searchStringsArray: [query],
+    locationQuery: location,
+    maxCrawledPlacesPerSearch: limit,
+    language: "en",
+    website: "allPlaces"
+});
 const { items } = await client.dataset(run.defaultDatasetId).listItems();
-
 const cleaned = [];
 const seen = new Set();
 
@@ -56,5 +61,4 @@ console.log(`Total scraped: ${items.length}`);
 console.log(`Total unique: ${cleaned.length}`);
 
 await Actor.pushData(cleaned);
-
 await Actor.exit();
