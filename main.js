@@ -1,7 +1,7 @@
 import { google } from "googleapis";
 import { Actor } from 'apify';
 import { ApifyClient } from 'apify-client';
-
+console.log("SCRIPT STARTED");
 await Actor.init();
 
 const input = await Actor.getInput();
