@@ -1,6 +1,7 @@
+import { google } from "googleapis";
 import { Actor } from 'apify';
 import { ApifyClient } from 'apify-client';
-
+import { google } from "googleapis";
 await Actor.init();
 
 const input = await Actor.getInput();
@@ -54,7 +55,36 @@ for (const place of items) {
 
 // 4️⃣ Output cleaned data
 await Actor.pushData(cleaned);
+async function pushToGoogleSheets(rows) {
+    const auth = new google.auth.GoogleAuth({
+        credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
 
+    const sheets = google.sheets({ version: "v4", auth });
+
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+
+    const values = rows.map(r => [
+        r.business_name || "",
+        r.phone || "",
+        r.emails || "",
+        r.website || ""
+    ]);
+
+    await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: "Sheet1!A1",
+        valueInputOption: "RAW",
+        requestBody: { values },
+    });
+
+    console.log("Pushed to Google Sheets");
+}
+
+if (cleaned.length > 0) {
+    await pushToGoogleSheets(cleaned);
+}
 console.log(`Total scraped: ${items.length}`);
 console.log(`Total unique: ${cleaned.length}`);
 
