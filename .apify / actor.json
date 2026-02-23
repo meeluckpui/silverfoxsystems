@@ -2,7 +2,7 @@
   "name": "silverfoxsystems",
   "version": "0.0",
   "buildTag": "latest",
-  "env": {},
+  "main": "main.js",
   "defaultRunOptions": {
     "build": "latest",
     "memoryMbytes": 1024,
