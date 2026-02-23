@@ -1,0 +1,11 @@
+{
+  "name": "silverfoxsystems",
+  "version": "0.0",
+  "buildTag": "latest",
+  "env": {},
+  "defaultRunOptions": {
+    "build": "latest",
+    "memoryMbytes": 1024,
+    "timeoutSecs": 300
+  }
+}
