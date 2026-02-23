@@ -19,13 +19,12 @@ const client = new ApifyClient({
 console.log(`Running Google Maps scrape for: ${query} in ${location}`);
 
 // 1️⃣ Call official Google Maps Scraper
-const run = await client.actor("apify/google-maps-scraper").call({
+const run = await client.actor("compass/crawler-google-places").call({
     searchStringsArray: [query],
     locationQuery: location,
     maxCrawledPlacesPerSearch: limit,
     language: "en",
 });
-
 // 2️⃣ Get dataset items
 const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
