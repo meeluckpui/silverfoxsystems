@@ -24,13 +24,6 @@ const run = await client.actor("apify/google-maps-scraper").call({
     language: "en",
     website: "allPlaces"
 });
-const run = await client.actor("apify/google-maps-scraper").call({
-    searchStringsArray: [query],
-    locationQuery: location,
-    maxCrawledPlacesPerSearch: limit,
-    language: "en",
-    website: "allPlaces"
-});
 const { items } = await client.dataset(run.defaultDatasetId).listItems();
 const cleaned = [];
 const seen = new Set();
