@@ -17,8 +17,7 @@ const client = new ApifyClient({
 });
 
 console.log(`Running Google Maps scrape for: ${query} in ${location}`);
-
-const run = await client.actor("apify/google-maps-scraper").call({
+const run = await client.actor("USERNAME/ACTOR-NAME-HERE").call({
     searchStringsArray: [query],
     locationQuery: location,
     maxCrawledPlacesPerSearch: limit,
