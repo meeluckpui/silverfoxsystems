@@ -1,13 +1,9 @@
-
 {
   "name": "silverfoxsystems",
-  "version": "1.0.0",
   "type": "module",
-  "scripts": {
-    "start": "node main.js"
   "dependencies": {
     "apify": "^3.0.0",
-    "apify-client": "^2.7.1"
+    "apify-client": "^2.0.0",
     "googleapis": "^131.0.0"
   }
 }
