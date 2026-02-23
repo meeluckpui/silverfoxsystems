@@ -1,0 +1,23 @@
+{
+  "name": "google-maps-wrapper-actor",
+  "version": "1.0.0",
+  "description": "Apify Actor that wraps the official Google Maps Scraper and returns normalized results.",
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js",
+    "lint": "node --check main.js src/*.js"
+  },
+  "keywords": [
+    "apify",
+    "actor",
+    "google-maps",
+    "crawlee"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "apify": "^3.3.2",
+    "apify-client": "^2.12.1",
+    "crawlee": "^3.12.2"
+  }
+}
