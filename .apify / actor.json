@@ -1,11 +1,4 @@
 {
   "name": "silverfoxsystems",
-  "version": "0.0",
-  "buildTag": "latest",
-  "main": "main.js",
-  "defaultRunOptions": {
-    "build": "latest",
-    "memoryMbytes": 1024,
-    "timeoutSecs": 300
-  }
+  "main": "main.js"
 }
