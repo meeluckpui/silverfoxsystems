@@ -1,9 +1,7 @@
 import { Actor } from "apify";
+import { ApifyClient } from "apify-client";
+import { google } from "googleapis";
 
-console.log("SCRIPT STARTED (MAIN.JS)");
+console.log("SCRIPT STARTED");
+
 await Actor.init();
-
-console.log("ACTOR INIT OK");
-
-await Actor.exit();
-console.log("DONE");
