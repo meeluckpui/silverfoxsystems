@@ -5,9 +5,12 @@ console.log("SCRIPT STARTED");
 await Actor.init();
 
 const input = await Actor.getInput();
-const query = input.query;
-const location = input.location;
-const limit = input.limit || 10;
+
+if (!input || !input.query || !input.location) {
+    throw new Error("You must provide 'query' and 'location' in input.");
+}
+
+const { query, location, limit = 10 } = input;
 
 if (!query || !location) {
     throw new Error('query and location are required.');
