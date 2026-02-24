@@ -5,3 +5,4 @@ import { google } from "googleapis";
 console.log("SCRIPT STARTED");
 
 await Actor.init();
+await Actor.exit();
