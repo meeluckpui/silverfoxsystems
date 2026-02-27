@@ -162,14 +162,11 @@ await Actor.main(async () => {
   console.log(`✅ Step: Unique cleaned results: ${cleaned.length}`);
 
   // 6) Push to Apify dataset (your actor output)
-  console.log("✅ Step: Pushing cleaned data to Apify dataset...");
-  await Actor.pushData(cleaned);
-  console.log("✅ Step: Pushed data to Apify dataset.");
+  // 6) Push to Apify dataset (your actor output)
+console.log("✅ Step: Pushing cleaned data to Apify dataset...");
+await Actor.pushData(cleaned);
+console.log("✅ Step: Pushed data to Apify dataset.");
 
-// ✅ Save cleaned results to default dataset
-await Actor.pushData(cleanedResults);
-
-console.log(`✅ Done. Saved ${cleanedResults.length} rows to Apify Dataset.`);
-console.log(`⬇️ Export your dataset to CSV: Actor run → Storage → Dataset → Export → CSV`);
-  console.log("🏁 DONE");
-});
+console.log(`✅ Done. Saved ${cleaned.length} rows to Apify Dataset.`);
+console.log("⬇️ Export your dataset to CSV: Actor run → Storage → Dataset → Export → CSV");
+console.log("🎉 DONE");
