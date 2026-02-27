@@ -166,13 +166,10 @@ await Actor.main(async () => {
   await Actor.pushData(cleaned);
   console.log("✅ Step: Pushed data to Apify dataset.");
 
-  // 7) Push to Google Sheets
-  if (cleaned.length > 0) {
-    console.log("✅ Step: Sending data to Google Sheets...");
-    await pushToGoogleSheets(cleaned);
-  } else {
-    console.log("⚠️ No cleaned results to push to Google Sheets.");
-  }
+// ✅ Save cleaned results to default dataset
+await Actor.pushData(cleanedResults);
 
+console.log(`✅ Done. Saved ${cleanedResults.length} rows to Apify Dataset.`);
+console.log(`⬇️ Export your dataset to CSV: Actor run → Storage → Dataset → Export → CSV`);
   console.log("🏁 DONE");
 });
