@@ -1,0 +1,362 @@
+{
+  "name": "Sheet URL to Email Scrape (Cron)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "cron_trigger",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Global workflow configuration\nconst SHEET_TAB_NAME = 'Sheet1';\nconst URL_COLUMN_NAME = 'website';\nconst EMAIL_COLUMN_NAME = 'email';\nconst EMAILS_FOUND_COLUMN_NAME = 'emails_found';\nconst BATCH_SIZE = 25;\nconst REQUEST_DELAY_MS = 800;\nconst FETCH_CONTACT_PAGES = false;\n\n// Additional behavior flags\nconst SKIP_IF_EMAIL_EXISTS = true;\n\nreturn [{\n  json: {\n    SHEET_TAB_NAME,\n    URL_COLUMN_NAME,\n    EMAIL_COLUMN_NAME,\n    EMAILS_FOUND_COLUMN_NAME,\n    BATCH_SIZE,\n    REQUEST_DELAY_MS,\n    FETCH_CONTACT_PAGES,\n    SKIP_IF_EMAIL_EXISTS\n  }\n}];"
+      },
+      "id": "set_config",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{$('Set Config').first().json.SHEET_TAB_NAME}}",
+          "mode": "name"
+        },
+        "options": {
+          "returnAll": true
+        }
+      },
+      "id": "read_rows",
+      "name": "Read Sheet Rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        660,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "YOUR_SHEETS_CREDENTIAL_NAME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Set Config').first().json;\n\nconst prepared = [];\nfor (const item of $input.all()) {\n  const row = item.json;\n  const rowNumber = row.rowNumber ?? row.row_number ?? row.__rowNumber ?? null;\n  if (!rowNumber) continue;\n\n  prepared.push({\n    json: {\n      ...row,\n      rowNumber,\n      website_raw: row[config.URL_COLUMN_NAME],\n      existing_email: row[config.EMAIL_COLUMN_NAME],\n      _config: config\n    }\n  });\n}\n\nreturn prepared;"
+      },
+      "id": "prepare_rows",
+      "name": "Prepare Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Set Config').first().json;\nconst out = [];\n\nfor (const item of $input.all()) {\n  const existing = String(item.json.existing_email ?? '').trim();\n  if (config.SKIP_IF_EMAIL_EXISTS && existing) continue;\n  out.push(item);\n}\n\nreturn out;"
+      },
+      "id": "skip_existing",
+      "name": "Skip Existing Emails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": "={{$('Set Config').first().json.BATCH_SIZE}}",
+        "options": {}
+      },
+      "id": "split_batches",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function cleanUrlCandidate(raw) {\n  if (!raw) return '';\n  let str = String(raw).trim();\n\n  // Avoid map URLs when possible: extract q/query/destination domain token\n  if (/google\\.[^/]+\\/maps/i.test(str)) {\n    try {\n      const parsed = new URL(str.startsWith('http') ? str : `https://${str}`);\n      const q = parsed.searchParams.get('q') || parsed.searchParams.get('query') || parsed.searchParams.get('destination');\n      if (q && /[a-z0-9-]+\\.[a-z]{2,}/i.test(q)) str = q;\n    } catch (_) {}\n  }\n\n  // Keep full path if provided, but ensure URL is fetchable\n  const token = str.match(/(?:https?:\\/\\/)?[^\\s]+/i)?.[0] ?? str;\n  str = token.replace(/[),.;]+$/, '');\n\n  if (!/^https?:\\/\\//i.test(str)) str = `https://${str}`;\n  return str;\n}\n\nfunction getRootDomain(urlStr) {\n  try {\n    const u = new URL(urlStr);\n    return `${u.protocol}//${u.hostname}`;\n  } catch {\n    return '';\n  }\n}\n\nconst out = [];\nfor (const item of $input.all()) {\n  const normalizedUrl = cleanUrlCandidate(item.json.website_raw);\n  const rootDomain = getRootDomain(normalizedUrl);\n\n  out.push({\n    json: {\n      ...item.json,\n      normalized_url: normalizedUrl,\n      root_domain: rootDomain\n    }\n  });\n}\n\nreturn out;"
+      },
+      "id": "normalize_url",
+      "name": "Normalize URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.normalized_url}}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "responseFormat": "string"
+            }
+          }
+        }
+      },
+      "id": "fetch_main_html",
+      "name": "Fetch Main HTML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "unit": "milliseconds",
+        "amount": "={{$('Set Config').first().json.REQUEST_DELAY_MS}}"
+      },
+      "id": "wait_rate_limit",
+      "name": "Wait (Rate Limit)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1760,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeObfuscations(text) {\n  return String(text || '')\n    .replace(/\\s*\\[\\s*at\\s*\\]\\s*/gi, '@')\n    .replace(/\\s*\\(\\s*at\\s*\\)\\s*/gi, '@')\n    .replace(/\\s+at\\s+/gi, '@')\n    .replace(/\\s*\\[\\s*dot\\s*\\]\\s*/gi, '.')\n    .replace(/\\s*\\(\\s*dot\\s*\\)\\s*/gi, '.')\n    .replace(/\\s+dot\\s+/gi, '.');\n}\n\nfunction extractEmails(text) {\n  const normalized = normalizeObfuscations(text);\n  const regex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g;\n  return normalized.match(regex) || [];\n}\n\nasync function fetchOptionalPages(helpers, rootDomain, enabled) {\n  if (!enabled || !rootDomain) return [];\n  const urls = [`${rootDomain}/contact`, `${rootDomain}/about`];\n  const pages = [];\n\n  for (const url of urls) {\n    try {\n      const response = await helpers.httpRequest({ method: 'GET', url, timeout: 10000 });\n      pages.push(typeof response === 'string' ? response : JSON.stringify(response));\n    } catch (_) {}\n  }\n\n  return pages;\n}\n\nconst out = [];\nfor (const item of $input.all()) {\n  const data = item.json;\n  const config = data._config || $('Set Config').first().json;\n\n  const mainHtml = typeof data.body === 'string' ? data.body : (data.error ? '' : JSON.stringify(data.body || ''));\n  let status = mainHtml ? 'no_email_found' : 'fetch_failed';\n\n  const optionalPages = await fetchOptionalPages(this.helpers, data.root_domain, config.FETCH_CONTACT_PAGES);\n  const combined = [mainHtml, ...optionalPages].join('\\n');\n\n  const mailtoMatches = [...combined.matchAll(/mailto:([^\"'\\s>?]+)/gi)]\n    .map((m) => decodeURIComponent(m[1] || '').split('?')[0]);\n  const directMatches = extractEmails(combined);\n\n  const uniqueEmails = [...new Set([...mailtoMatches, ...directMatches]\n    .map((e) => String(e).trim().toLowerCase())\n    .filter((e) => /^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$/i.test(e)))];\n\n  const primaryEmail = uniqueEmails[0] || '';\n  const emailsFound = uniqueEmails.slice(0, 5).join(', ');\n  if (primaryEmail) status = 'email_found';\n\n  out.push({\n    json: {\n      ...data,\n      primary_email: primaryEmail,\n      emails_found: emailsFound,\n      email_status: status\n    }\n  });\n}\n\nreturn out;"
+      },
+      "id": "extract_emails",
+      "name": "Extract Emails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Set Config').first().json;\nconst out = [];\n\nfor (const item of $input.all()) {\n  out.push({\n    json: {\n      rowNumber: item.json.rowNumber,\n      [config.EMAIL_COLUMN_NAME]: item.json.primary_email || '',\n      [config.EMAILS_FOUND_COLUMN_NAME]: item.json.emails_found || '',\n      email_status: item.json.email_status || 'no_email_found'\n    }\n  });\n}\n\nreturn out;"
+      },
+      "id": "prepare_update",
+      "name": "Prepare Update Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{$('Set Config').first().json.SHEET_TAB_NAME}}",
+          "mode": "name"
+        },
+        "rowNumber": "={{$json.rowNumber}}",
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        },
+        "options": {}
+      },
+      "id": "update_row",
+      "name": "Update Sheet Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2420,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "YOUR_SHEETS_CREDENTIAL_NAME"
+        }
+      },
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Config": {
+      "main": [
+        [
+          {
+            "node": "Read Sheet Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sheet Rows": {
+      "main": [
+        [
+          {
+            "node": "Prepare Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Rows": {
+      "main": [
+        [
+          {
+            "node": "Skip Existing Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Existing Emails": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "Normalize URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Normalize URL": {
+      "main": [
+        [
+          {
+            "node": "Fetch Main HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Main HTML": {
+      "main": [
+        [
+          {
+            "node": "Wait (Rate Limit)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Rate Limit)": {
+      "main": [
+        [
+          {
+            "node": "Extract Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Emails": {
+      "main": [
+        [
+          {
+            "node": "Prepare Update Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Update Payload": {
+      "main": [
+        [
+          {
+            "node": "Update Sheet Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Sheet Row": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "sheet-url-to-email-scrape-(cron)",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "silverfoxsystems"
+  }
+}
