@@ -155,7 +155,7 @@ await Actor.main(async () => {
       address: place?.address || null,
       rating: place?.totalScore ?? null,
       reviews: place?.reviewsCount ?? null,
-      maps_url: mapsUrl,
+      
     });
   }
 
